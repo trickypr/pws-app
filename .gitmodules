@@ -1,3 +1,6 @@
 [submodule "api"]
 	path = api
 	url = https://github.com/trickypr/wu-pws-api
+[submodule "ap"]
+	path = api
+	url = https://github.com/trickypr/wu-pws-api
