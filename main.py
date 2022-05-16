@@ -18,11 +18,20 @@ UPDATE_FREQ = 2.5 # NOTE: Cannot be any less than 2.5
 TEM_SENSOR_TYPE = Adafruit_DHT.DHT22
 TEM_PIN = 4
 
+#############################
+# Data collection functions #
+#############################
+
 # Requires the adafruit DHT library to be installed. Run the
 # following command to install it:
 # pip3 install --install-option="--force-pi" Adafruit_DHT
 def get_tem_and_humid() -> (float, float):
     return Adafruit_DHT.read_retry(TEM_SENSOR_TYPE, TEM_PIN)
+
+
+#############
+# Main Loop #
+#############
 
 # TODO: Enable rapid updates, the code for this is currently on a
 # school raspberry pi that I do not have access to.
@@ -36,7 +45,3 @@ while True:
 
     time.sleep(UPDATE_FREQ)
 
-
-
-
-print(api.start_request().temperature_celsius(25.0).send())
