@@ -34,20 +34,27 @@ TEM_PIN = 4
 # Rain sensor
 RAIN_PIN = 16
 
+PRESSURE_CALIBRATION_VALUE = 95
+
 ###################################
 # Automagicly generated constants #
 ###################################
 
+print("Magic constants")
+
 i2c = busio.I2C(board.SCL, board.SDA)
 pressure_sensor = adafruit_lps2x.LPS22(
     i2c)  # NOTE: If you are using an lps25, modify this line
-uv_sensor = si1145.SI1145(i2c=i2c)
+
+uv_sensor = si1145.SI1145()
 
 rain_tracker = RainTracker()
 
 #########################
 # Other setup functions #
 #########################
+
+print("Setup functions")
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(RAIN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -57,25 +64,31 @@ GPIO.setup(RAIN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 # Data collection functions #
 #############################
 
+print("Data collection functions")
 
 # Requires the adafruit DHT library to be installed. Run the
 # following command to install it:
 # pip3 install --install-option="--force-pi" Adafruit_DHT
 def get_tem_and_humid() -> Tuple[float, float]:
+    print("Get temperature")
+    return (0.0, 0.0)
     return Adafruit_DHT.read_retry(TEM_SENSOR_TYPE, TEM_PIN)
 
 
 def get_pressure() -> float:
-    return pressure_sensor.pressure
+    print("Get pressure")
+    return pressure_sensor.pressure + PRESSURE_CALIBRATION_VALUE
 
 
 def get_uv() -> float:
-    return uv_sensor.read_uv
+    print("Get uv")
+    return uv_sensor.readUV()
 
 def rain_callback():
     """
     This function should be called by a hardware interupt whenever the rain sensor is trigured
     """
+    print("Get rain")
 
     rain_tracker.register_rain(RainEvent(0.2794, datetime.now()))
 
@@ -90,13 +103,19 @@ api = API(STATION_ID, STATION_KEY).use_realtime(UPDATE_FREQ)
 GPIO.add_event_detect(RAIN_PIN, GPIO.FALLING, callback=rain_callback, bouncetime=100)
 
 while True:
+    print("Starting request")
+
     temperature, humidity = get_tem_and_humid()
     pressure = get_pressure()
     uv = get_uv()
     rain = rain_tracker.get_past_hour()
 
+    print(f"Pressure: {pressure}")
+
     res = api.start_request().temperature_celsius(temperature).humidity(
         humidity).pressure_hpa(pressure).uv_index(uv).hourly_rain_mm(rain).send()
-    print(res)
+    print("Received " + str(res.status_code) + " " + str(res.text))
+
+    print("Request end")
 
     time.sleep(UPDATE_FREQ)
