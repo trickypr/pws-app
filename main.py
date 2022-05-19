@@ -71,7 +71,6 @@ print("Data collection functions")
 # pip3 install --install-option="--force-pi" Adafruit_DHT
 def get_tem_and_humid() -> Tuple[float, float]:
     print("Get temperature")
-    return (0.0, 0.0)
     return Adafruit_DHT.read_retry(TEM_SENSOR_TYPE, TEM_PIN)
 
 
@@ -105,12 +104,12 @@ GPIO.add_event_detect(RAIN_PIN, GPIO.FALLING, callback=rain_callback, bouncetime
 while True:
     print("Starting request")
 
-    temperature, humidity = get_tem_and_humid()
+    humidity, temperature = get_tem_and_humid()
     pressure = get_pressure()
     uv = get_uv()
     rain = rain_tracker.get_past_hour()
 
-    print(f"Pressure: {pressure}")
+    print(f"Temperature: {temperature}, Humid: {humidity}")
 
     res = api.start_request().temperature_celsius(temperature).humidity(
         humidity).pressure_hpa(pressure).uv_index(uv).hourly_rain_mm(rain).send()
