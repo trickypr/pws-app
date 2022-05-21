@@ -32,7 +32,7 @@ TEM_SENSOR_TYPE = Adafruit_DHT.DHT22
 TEM_PIN = 4
 
 # Rain sensor
-RAIN_PIN = 16
+RAIN_PIN = 17
 
 PRESSURE_CALIBRATION_VALUE = 95
 
@@ -57,7 +57,7 @@ rain_tracker = RainTracker()
 print("Setup functions")
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(RAIN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(RAIN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 
 #############################
@@ -70,24 +70,22 @@ print("Data collection functions")
 # following command to install it:
 # pip3 install --install-option="--force-pi" Adafruit_DHT
 def get_tem_and_humid() -> Tuple[float, float]:
-    print("Get temperature")
     return Adafruit_DHT.read_retry(TEM_SENSOR_TYPE, TEM_PIN)
 
 
 def get_pressure() -> float:
-    print("Get pressure")
     return pressure_sensor.pressure + PRESSURE_CALIBRATION_VALUE
 
 
 def get_uv() -> float:
-    print("Get uv")
-    return uv_sensor.readUV()
+    # The device returns the UV index miltiplied by 100. 
+    return uv_sensor.readUV() / 100
 
-def rain_callback():
+def rain_callback(*args):
     """
     This function should be called by a hardware interupt whenever the rain sensor is trigured
     """
-    print("Get rain")
+    print("Rain event")
 
     rain_tracker.register_rain(RainEvent(0.2794, datetime.now()))
 
@@ -95,26 +93,18 @@ def rain_callback():
 # Main Loop #
 #############
 
-# TODO: Enable rapid updates, the code for this is currently on a
-# school raspberry pi that I do not have access to.
 api = API(STATION_ID, STATION_KEY).use_realtime(UPDATE_FREQ)
 
 GPIO.add_event_detect(RAIN_PIN, GPIO.FALLING, callback=rain_callback, bouncetime=100)
 
 while True:
-    print("Starting request")
-
     humidity, temperature = get_tem_and_humid()
     pressure = get_pressure()
     uv = get_uv()
     rain = rain_tracker.get_past_hour()
 
-    print(f"Temperature: {temperature}, Humid: {humidity}")
-
     res = api.start_request().temperature_celsius(temperature).humidity(
-        humidity).pressure_hpa(pressure).uv_index(uv).hourly_rain_mm(rain).send()
+        humidity).pressure_hpa(pressure).uv_index(uv).rain(rain_tracker).send()
     print("Received " + str(res.status_code) + " " + str(res.text))
-
-    print("Request end")
 
     time.sleep(UPDATE_FREQ)
