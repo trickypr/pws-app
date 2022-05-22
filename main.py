@@ -12,6 +12,7 @@ import RPi.GPIO as GPIO
 import board
 import busio
 import adafruit_lps2x
+from api.src.helpers import WindTracker
 import si1145
 
 from api import API, RainTracker, RainEvent
@@ -31,8 +32,9 @@ UPDATE_FREQ = 2.5  # NOTE: Cannot be any less than 2.5
 TEM_SENSOR_TYPE = Adafruit_DHT.DHT22
 TEM_PIN = 4
 
-# Rain sensor
+# Switch sensors
 RAIN_PIN = 17
+WIND_SPEED_PIN = 27
 
 PRESSURE_CALIBRATION_VALUE = 95
 
@@ -43,12 +45,17 @@ PRESSURE_CALIBRATION_VALUE = 95
 print("Magic constants")
 
 i2c = busio.I2C(board.SCL, board.SDA)
-pressure_sensor = adafruit_lps2x.LPS22(
-    i2c)  # NOTE: If you are using an lps25, modify this line
+
+def get_press_sensor() -> adafruit_lps2x.LPS22:
+    return adafruit_lps2x.LPS22(i2c)  
+
+# NOTE: If you are using an lps25, modify this line
+pressure_sensor = get_press_sensor()
 
 uv_sensor = si1145.SI1145()
 
 rain_tracker = RainTracker()
+wind_tracker = WindTracker()
 
 #########################
 # Other setup functions #
@@ -58,7 +65,7 @@ print("Setup functions")
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(RAIN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
+GPIO.setup(WIND_SPEED_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 #############################
 # Data collection functions #
@@ -89,6 +96,10 @@ def rain_callback(*args):
 
     rain_tracker.register_rain(RainEvent(0.2794, datetime.now()))
 
+def wind_callback(*args):
+    print("Wind event")
+    wind_tracker.add_event(datetime.now())
+
 #############
 # Main Loop #
 #############
@@ -96,6 +107,7 @@ def rain_callback(*args):
 api = API(STATION_ID, STATION_KEY).use_realtime(UPDATE_FREQ)
 
 GPIO.add_event_detect(RAIN_PIN, GPIO.FALLING, callback=rain_callback, bouncetime=100)
+GPIO.add_event_detect(WIND_SPEED_PIN, GPIO.FALLING, callback=wind_callback, bouncetime=100)
 
 while True:
     humidity, temperature = get_tem_and_humid()
@@ -104,7 +116,7 @@ while True:
     rain = rain_tracker.get_past_hour()
 
     res = api.start_request().temperature_celsius(temperature).humidity(
-        humidity).pressure_hpa(pressure).uv_index(uv).rain(rain_tracker).send()
+        humidity).pressure_hpa(pressure).uv_index(uv).rain(rain_tracker).wind(wind_tracker).send()
     print("Received " + str(res.status_code) + " " + str(res.text))
 
     time.sleep(UPDATE_FREQ)
