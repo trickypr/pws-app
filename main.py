@@ -81,12 +81,14 @@ wind_tracker.load_direction_table([[0, 33 * K], [22.5, 6.57 * K],
 i2c = busio.I2C(board.SCL, board.SDA)
 spi = busio.SPI(clock=board.SCK, MISO=board.MISO, MOSI=board.MOSI)
 
+
 # This function has been put here to work around the vscode
 # reocmendation engine. It thinks that the LPS22 funciton
 # will never return, which will break stuff. This is a hakcy
 # workaround
 def get_press_sensor() -> adafruit_lps2x.LPS22:
     return adafruit_lps2x.LPS22(i2c)
+
 
 # See the note above the defintion of this function
 pressure_sensor = get_press_sensor()
@@ -118,6 +120,7 @@ GPIO.setup(WIND_SPEED_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 # Data collection functions #
 #############################
 
+
 # Requires the adafruit DHT library to be installed. Run the
 # following command to install it:
 # pip3 install --install-option="--force-pi" Adafruit_DHT
@@ -128,26 +131,35 @@ def get_tem_and_humid() -> Tuple[float, float]:
 
 
 def get_pressure() -> float:
-    # Gets the pressure from the sensor and adds a calabration
-    # value which I found by comparing to a commercial pressure
-    # sensor I have in my house
-    return pressure_sensor.pressure + PRESSURE_CALIBRATION_VALUE
+    try:
+        # Gets the pressure from the sensor and adds a calabration
+        # value which I found by comparing to a commercial pressure
+        # sensor I have in my house
+        return pressure_sensor.pressure + PRESSURE_CALIBRATION_VALUE
+    except:
+        return None
 
 
 def get_uv() -> float:
-    # The device returns the UV index miltiplied by 100.
-    return uv_sensor.readUV() / 100
+    try:
+        # The device returns the UV index miltiplied by 100.
+        return uv_sensor.readUV() / 100
+    except:
+        return None
 
 
 def get_wind_direction():
-    # The wind direction is selected using the table that is
-    # programmed into the tracker up around like 65. These values
-    # take in a resistance and spit out a direction. Before we
-    # get a direction, we need to calculate the resistance using
-    # the first two lines
-    voltage = dir_raw.voltage
-    resistance = (voltage * 10_000) / (3.3 - voltage)
-    return wind_tracker.get_direction(resistance)
+    try:
+        # The wind direction is selected using the table that is
+        # programmed into the tracker up around like 65. These values
+        # take in a resistance and spit out a direction. Before we
+        # get a direction, we need to calculate the resistance using
+        # the first two lines
+        voltage = dir_raw.voltage
+        resistance = (voltage * 10_000) / (3.3 - voltage)
+        return wind_tracker.get_direction(resistance)
+    except:
+        return None
 
 
 def rain_callback(*args):
@@ -192,13 +204,17 @@ while True:
     pressure = get_pressure()
     uv = get_uv()
 
-    # Send the data to the api and print the result to the console for
-    # debugging purposes.
-    res = api.start_request().temperature_celsius(temperature).humidity(
-        humidity).pressure_hpa(pressure).uv_index(uv).rain(rain_tracker).wind(
-            wind_tracker).send()
-    print("Received " + str(res.status_code) + " " + str(res.text))
+    try:
+        # Send the data to the api and print the result to the console for
+        # debugging purposes.
+        res = api.start_request().temperature_celsius(temperature).humidity(
+            humidity).pressure_hpa(pressure).uv_index(uv).rain(
+                rain_tracker).wind(wind_tracker).send()
+        print("Received " + str(res.status_code) + " " + str(res.text))
+    except Exception as e:
+        print("Error: " + str(e))
+        continue  # The program shouldn't stop because their is an error
 
-    # The weatuer underground api will get unhappy if we send things to
+    # The weather underground api will get unhappy if we send things to
     # regularly, so let there be a small sleep timer.
     time.sleep(UPDATE_FREQ)
