@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-
+# This code was obtained from an outside source. See the journal for more info
+# on sourcing
+#
 # Author: Joe Gutting
 # With use of Adafruit SI1145 library for Arduino, Adafruit_GPIO.I2C & BMP Library by Tony DiCola
 #
